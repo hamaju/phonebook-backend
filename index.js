@@ -42,7 +42,7 @@ let persons = [
 ];
 
 app.get('/', (req, res) => {
-  res.send('<h1>Puhelinluettelo</h1>');
+  res.send('<h1>Phonebook</h1>');
 });
 
 app.get('/info', (req, res) => {
