@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
-const password = process.argv[2];
-const name = process.argv[3];
-const number = process.argv[4];
+// skip the first 2 args
+const args = process.argv.slice(2);
+const [password, name, number] = args;
 
 const url = `mongodb+srv://juhani:${password}@cluster0.kjojx.mongodb.net/test?retryWrites=true&w=majority`;
 
