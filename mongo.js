@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const args = process.argv.slice(2);
 const [password, name, number] = args;
 
-const url = `mongodb+srv://juhani:${password}@cluster0.kjojx.mongodb.net/test?retryWrites=true&w=majority`;
+const url = `mongodb+srv://luser:${password}@cluster0.kjojx.mongodb.net/test?retryWrites=true&w=majority`;
 
 mongoose.connect(url, {
   useNewUrlParser: true,

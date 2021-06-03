@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const Person = require('./models/person');
 
 const app = express();
 
@@ -13,80 +15,48 @@ app.use(
   morgan(':method :url :status :res[content-length] - :response-time ms :body')
 );
 
-let persons = [
-  {
-    id: 1,
-    name: 'Arto Hellas',
-    number: '040-123456',
-  },
-  {
-    id: 2,
-    name: 'Ada Lovelace',
-    number: '39-44-5323523',
-  },
-  {
-    id: 3,
-    name: 'Dan Abramov',
-    number: '12-43-234345',
-  },
-  {
-    id: 4,
-    name: 'Mary Poppendieck',
-    number: '39-23-6423122',
-  },
-  {
-    id: 5,
-    name: 'Dick McBalls',
-    number: '42-69-6091337',
-  },
-];
-
 app.get('/', (req, res) => {
   res.send('<h1>Phonebook</h1>');
 });
 
 app.get('/info', (req, res) => {
-  res.send(
-    `
-      <p>Phonebook has info for ${persons.length} people</p>
+  Person.countDocuments({}, (err, count) => {
+    res.send(
+      `
+      <p>Phonebook has info for ${count} people</p>
       <p>${Date()}</p>
     `
-  );
+    );
+  });
 });
 
 app.get('/api/persons', (req, res) => {
-  res.send(persons);
+  Person.find({}).then((persons) => {
+    res.json(persons);
+  });
 });
 
-app.get('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const person = persons.find((note) => note.id === id);
-
-  if (person) {
-    res.json(person);
-  } else {
-    res.status(404).end();
-  }
+app.get('/api/persons/:id', (req, res, next) => {
+  Person.findById(req.params.id)
+    .then((person) => {
+      if (person) {
+        res.json(person);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch((err) => next(err));
 });
 
-app.delete('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id);
-  persons = persons.filter((person) => person.id !== id);
-
-  res.status(204).end();
+app.delete('/api/persons/:id', (req, res, next) => {
+  Person.findByIdAndRemove(req.params.id)
+    .then((result) => {
+      res.status(204).end();
+    })
+    .catch((err) => next(err));
 });
 
-const getRandomInt = (min, max) => {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min) + min);
-};
-
-const generateId = () => {
-  return getRandomInt(1000000, 9999999);
-};
-
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
   const body = req.body;
 
   if (!body.name) {
@@ -99,25 +69,52 @@ app.post('/api/persons', (req, res) => {
     });
   }
 
-  const personExists = persons.some((person) => person.name === body.name);
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+  });
 
-  if (personExists) {
-    return res.status(409).json({ error: 'name must be unique' });
-  }
+  person
+    .save()
+    .then((savedPerson) => {
+      res.json(savedPerson);
+    })
+    .catch((err) => next(err));
+});
+
+app.put('/api/persons/:id', (req, res, next) => {
+  const body = req.body;
 
   const person = {
-    id: generateId(),
     name: body.name,
     number: body.number,
   };
 
-  persons = persons.concat(person);
-
-  res.json(person);
+  Person.findByIdAndUpdate(req.params.id, person, { new: true })
+    .then((updatedPerson) => {
+      res.json(updatedPerson);
+    })
+    .catch((err) => next(err));
 });
 
-// heroku dynamically assigns a port; use port 3001 locally
-const PORT = 3001;
-app.listen(process.env.PORT || PORT, () => {
+const unknownEndpoint = (req, res) => {
+  res.status(404).send({ error: 'unknown endpoint' });
+};
+
+const errorHandler = (err, req, res, next) => {
+  console.error(err.message);
+
+  if (err.name === 'CastError') {
+    return res.status(400).send({ error: 'malformatted id' });
+  }
+
+  next(err);
+};
+
+app.use(unknownEndpoint);
+app.use(errorHandler);
+
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
