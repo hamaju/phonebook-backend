@@ -59,15 +59,15 @@ app.delete('/api/persons/:id', (req, res, next) => {
 app.post('/api/persons', (req, res, next) => {
   const body = req.body;
 
-  if (!body.name) {
-    return res.status(400).json({
-      error: 'name missing',
-    });
-  } else if (!body.number) {
-    return res.status(400).json({
-      error: 'number missing',
-    });
-  }
+  // if (!body.name) {
+  //   return res.status(400).json({
+  //     error: 'name missing',
+  //   });
+  // } else if (!body.number) {
+  //   return res.status(400).json({
+  //     error: 'number missing',
+  //   });
+  // }
 
   const person = new Person({
     name: body.name,
@@ -76,8 +76,9 @@ app.post('/api/persons', (req, res, next) => {
 
   person
     .save()
-    .then((savedPerson) => {
-      res.json(savedPerson);
+    .then((savedPerson) => savedPerson.toJSON())
+    .then((savedAndFormattedPerson) => {
+      res.json(savedAndFormattedPerson);
     })
     .catch((err) => next(err));
 });
@@ -92,7 +93,7 @@ app.put('/api/persons/:id', (req, res, next) => {
 
   Person.findByIdAndUpdate(req.params.id, person, { new: true })
     .then((updatedPerson) => {
-      res.json(updatedPerson);
+      res.json(updatedPerson.toJSON());
     })
     .catch((err) => next(err));
 });
@@ -101,17 +102,20 @@ const unknownEndpoint = (req, res) => {
   res.status(404).send({ error: 'unknown endpoint' });
 };
 
+app.use(unknownEndpoint);
+
 const errorHandler = (err, req, res, next) => {
   console.error(err.message);
 
   if (err.name === 'CastError') {
     return res.status(400).send({ error: 'malformatted id' });
+  } else if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: err.message });
   }
 
   next(err);
 };
 
-app.use(unknownEndpoint);
 app.use(errorHandler);
 
 const PORT = process.env.PORT;
